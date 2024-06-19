@@ -49,13 +49,13 @@ fn create_hud(mut commands: Commands, assets: ResMut<AssetServer>) {
     let button_image = assets.load("textures/button_square_depth_gloss.png");
 
     let slicer = TextureSlicer {
-        border: // BorderRect::square(4.),
-        BorderRect {
-            left: 4.,
-            right: 4.,
-            top: 5.,
-            bottom: 8.,
-        },
+        border: BorderRect::rectangle(4., 6.),
+        // BorderRect {
+        //     left: 4.,
+        //     right: 4.,
+        //     top:  5.,
+        //     bottom: 8.,
+        // },
         center_scale_mode: SliceScaleMode::Stretch,
         sides_scale_mode: SliceScaleMode::Stretch,
         max_corner_scale: 1.0,
@@ -108,7 +108,7 @@ fn create_hud(mut commands: Commands, assets: ResMut<AssetServer>) {
                         build.spawn(TextBundle::from_section(
                             id.get_name(),
                             TextStyle {
-                                font_size: 16.0,
+                                font_size: 20.0,
                                 color: Color::BLACK,
                                 ..default()
                             },
