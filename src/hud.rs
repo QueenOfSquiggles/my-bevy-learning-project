@@ -1,7 +1,6 @@
 use bevy::prelude::*;
-use style_description::StyleDescription;
 
-use crate::ui_builder::*;
+use crate::ui_builder::{style_description::StyleDescription, Gui, GuiBuilder};
 
 // This plugin is being tested with isolation by only including itself and `DefaultPlugins`
 // eg:
@@ -65,40 +64,6 @@ fn create_hud(mut commands: Commands, assets: ResMut<AssetServer>) {
     };
 
     commands.spawn(Camera2dBundle::default());
-    let layout = UiBuilder::start_layout()
-        .node("root", &[])
-        .start_children()
-        .node("menu", &["column"])
-        .start_children()
-        .node("btn_group", &["column"])
-        .start_children()
-        .node("btn_play", &["btn"])
-        .node("btn_options", &["btn"])
-        .node("btn_credits", &["btn"])
-        .node("btn_quit", &["btn"]);
-    info!("GUI Layout  {:?}", layout);
-
-    let mut style_builder = layout.finish_layout();
-    let style = style_builder
-        .by_name(
-            "root",
-            StyleDescription {
-                width: Some(Val::Percent(100.)),
-                height: Some(Val::Percent(100.)),
-                ..default()
-            },
-        )
-        .by_tag(
-            &["column"],
-            StyleDescription {
-                flex_direction: Some(FlexDirection::Column),
-                align_items: Some(AlignItems::Center),
-                justify_content: Some(JustifyContent::Center),
-                ..default()
-            },
-        )
-        .by_tag(&["btn"], StyleDescription { ..default() });
-    // info!("GUI Styled  {:?}", style);
 
     // commands
     //     .spawn(NodeBundle {

@@ -277,54 +277,57 @@ pub struct StyleDescription {
 }
 
 impl StyleDescription {
-    pub(super) fn apply(self, other: &StyleDescription) -> Self {
-        Self {
-            // Jesus fucking christ there's *gotta* be a better way to write this... T-T
-            display: do_override(self.display, other.display),
-            position_type: do_override(self.position_type, other.position_type),
-            overflow: do_override(self.overflow, other.overflow),
-            direction: do_override(self.direction, other.direction),
-            left: do_override(self.left, other.left),
-            right: do_override(self.right, other.right),
-            top: do_override(self.top, other.top),
-            bottom: do_override(self.bottom, other.bottom),
-            width: do_override(self.width, other.width),
-            height: do_override(self.height, other.height),
-            min_width: do_override(self.min_width, other.min_width),
-            min_height: do_override(self.min_height, other.min_height),
-            max_width: do_override(self.max_width, other.max_width),
-            max_height: do_override(self.max_height, other.max_height),
-            aspect_ratio: do_override(self.aspect_ratio, other.aspect_ratio),
-            align_items: do_override(self.align_items, other.align_items),
-            justify_items: do_override(self.justify_items, other.justify_items),
-            align_self: do_override(self.align_self, other.align_self),
-            justify_self: do_override(self.justify_self, other.justify_self),
-            align_content: do_override(self.align_content, other.align_content),
-            justify_content: do_override(self.justify_content, other.justify_content),
-            margin: do_override(self.margin, other.margin),
-            padding: do_override(self.padding, other.padding),
-            border: do_override(self.border, other.border),
-            flex_direction: do_override(self.flex_direction, other.flex_direction),
-            flex_wrap: do_override(self.flex_wrap, other.flex_wrap),
-            flex_grow: do_override(self.flex_grow, other.flex_grow),
-            flex_shrink: do_override(self.flex_shrink, other.flex_shrink),
-            flex_basis: do_override(self.flex_basis, other.flex_basis),
-            row_gap: do_override(self.row_gap, other.row_gap),
-            column_gap: do_override(self.column_gap, other.column_gap),
-            grid_auto_flow: do_override(self.grid_auto_flow, other.grid_auto_flow),
-            grid_template_rows: do_override(
-                self.grid_template_rows,
-                other.grid_template_rows.clone(),
-            ),
-            grid_template_columns: do_override(
-                self.grid_template_columns,
-                other.grid_template_columns.clone(),
-            ),
-            grid_auto_rows: do_override(self.grid_auto_rows, other.grid_auto_rows.clone()),
-            grid_auto_columns: do_override(self.grid_auto_columns, other.grid_auto_columns.clone()),
-            grid_row: do_override(self.grid_row, other.grid_row),
-            grid_column: do_override(self.grid_column, other.grid_column),
-        }
+    pub fn apply(&mut self, other: &StyleDescription) -> &mut Self {
+        // Jesus fucking christ there's *gotta* be a better way to write this... T-T
+        self.display = do_override(self.display, other.display);
+        self.position_type = do_override(self.position_type, other.position_type);
+        self.overflow = do_override(self.overflow, other.overflow);
+        self.direction = do_override(self.direction, other.direction);
+        self.left = do_override(self.left, other.left);
+        self.right = do_override(self.right, other.right);
+        self.top = do_override(self.top, other.top);
+        self.bottom = do_override(self.bottom, other.bottom);
+        self.width = do_override(self.width, other.width);
+        self.height = do_override(self.height, other.height);
+        self.min_width = do_override(self.min_width, other.min_width);
+        self.min_height = do_override(self.min_height, other.min_height);
+        self.max_width = do_override(self.max_width, other.max_width);
+        self.max_height = do_override(self.max_height, other.max_height);
+        self.aspect_ratio = do_override(self.aspect_ratio, other.aspect_ratio);
+        self.align_items = do_override(self.align_items, other.align_items);
+        self.justify_items = do_override(self.justify_items, other.justify_items);
+        self.align_self = do_override(self.align_self, other.align_self);
+        self.justify_self = do_override(self.justify_self, other.justify_self);
+        self.align_content = do_override(self.align_content, other.align_content);
+        self.justify_content = do_override(self.justify_content, other.justify_content);
+        self.margin = do_override(self.margin, other.margin);
+        self.padding = do_override(self.padding, other.padding);
+        self.border = do_override(self.border, other.border);
+        self.flex_direction = do_override(self.flex_direction, other.flex_direction);
+        self.flex_wrap = do_override(self.flex_wrap, other.flex_wrap);
+        self.flex_grow = do_override(self.flex_grow, other.flex_grow);
+        self.flex_shrink = do_override(self.flex_shrink, other.flex_shrink);
+        self.flex_basis = do_override(self.flex_basis, other.flex_basis);
+        self.row_gap = do_override(self.row_gap, other.row_gap);
+        self.column_gap = do_override(self.column_gap, other.column_gap);
+        self.grid_auto_flow = do_override(self.grid_auto_flow, other.grid_auto_flow);
+        self.grid_template_rows = do_override(
+            self.grid_template_rows.clone(),
+            other.grid_template_rows.clone(),
+        );
+        self.grid_template_columns = do_override(
+            self.grid_template_columns.clone(),
+            other.grid_template_columns.clone(),
+        );
+        self.grid_auto_rows =
+            do_override(self.grid_auto_rows.clone(), other.grid_auto_rows.clone());
+        self.grid_auto_columns = do_override(
+            self.grid_auto_columns.clone(),
+            other.grid_auto_columns.clone(),
+        );
+        self.grid_row = do_override(self.grid_row, other.grid_row);
+        self.grid_column = do_override(self.grid_column, other.grid_column);
+        self
     }
 }
 
@@ -333,5 +336,50 @@ fn do_override<T>(base: Option<T>, next: Option<T>) -> Option<T> {
         next
     } else {
         base
+    }
+}
+
+impl From<StyleDescription> for Style {
+    fn from(value: StyleDescription) -> Self {
+        Style {
+            display: value.display.unwrap_or_default(),
+            position_type: value.position_type.unwrap_or_default(),
+            overflow: value.overflow.unwrap_or_default(),
+            direction: value.direction.unwrap_or_default(),
+            left: value.left.unwrap_or_default(),
+            right: value.right.unwrap_or_default(),
+            top: value.top.unwrap_or_default(),
+            bottom: value.bottom.unwrap_or_default(),
+            width: value.width.unwrap_or_default(),
+            height: value.height.unwrap_or_default(),
+            min_width: value.min_width.unwrap_or_default(),
+            min_height: value.min_height.unwrap_or_default(),
+            max_width: value.max_width.unwrap_or_default(),
+            max_height: value.max_height.unwrap_or_default(),
+            aspect_ratio: value.aspect_ratio,
+            align_items: value.align_items.unwrap_or_default(),
+            justify_items: value.justify_items.unwrap_or_default(),
+            align_self: value.align_self.unwrap_or_default(),
+            justify_self: value.justify_self.unwrap_or_default(),
+            align_content: value.align_content.unwrap_or_default(),
+            justify_content: value.justify_content.unwrap_or_default(),
+            margin: value.margin.unwrap_or_default(),
+            padding: value.padding.unwrap_or_default(),
+            border: value.border.unwrap_or_default(),
+            flex_direction: value.flex_direction.unwrap_or_default(),
+            flex_wrap: value.flex_wrap.unwrap_or_default(),
+            flex_grow: value.flex_grow.unwrap_or_default(),
+            flex_shrink: value.flex_shrink.unwrap_or_default(),
+            flex_basis: value.flex_basis.unwrap_or_default(),
+            row_gap: value.row_gap.unwrap_or_default(),
+            column_gap: value.column_gap.unwrap_or_default(),
+            grid_auto_flow: value.grid_auto_flow.unwrap_or_default(),
+            grid_template_rows: value.grid_template_rows.unwrap_or_default(),
+            grid_template_columns: value.grid_template_columns.unwrap_or_default(),
+            grid_auto_rows: value.grid_auto_rows.unwrap_or_default(),
+            grid_auto_columns: value.grid_auto_columns.unwrap_or_default(),
+            grid_row: value.grid_row.unwrap_or_default(),
+            grid_column: value.grid_column.unwrap_or_default(),
+        }
     }
 }

@@ -1,127 +1,240 @@
-use bevy::{prelude::*, utils::HashMap};
+use std::collections::{HashMap, VecDeque};
+
+use bevy::prelude::*;
 use style_description::StyleDescription;
 
 pub mod style_description;
-
-#[derive(Debug, Clone)]
-struct UiLayoutNode {
-    pub name: String,
-    pub tags: Vec<String>,
+#[derive(Default, Debug, Clone)]
+pub struct LayoutNode {
+    name: String,
+    tags: Vec<String>,
+    children: Vec<LayoutNode>,
 }
 
-#[derive(Debug, Clone)]
-pub struct UiBuilder;
-
-#[derive(Debug, Clone)]
-pub struct UiBuilderLayoutStep {
-    layout: Vec<(u8, UiLayoutNode)>,
-    current_indent: u8,
+pub trait IntoLayoutNode<T>: Sized {
+    fn to_layout_node(self) -> LayoutNode;
 }
 
-#[derive(Debug, Clone)]
-pub struct UiBuilderDescriptionStep {
-    description: Vec<(u8, UiLayoutNode, StyleDescription)>,
+#[derive(Clone, Debug)]
+pub enum Gui {
+    Node(&'static str, &'static [&'static str]),
+    Parent(&'static str, &'static [&'static str], &'static [Gui]),
 }
 
-#[derive(Debug, Clone)]
-pub struct UiBuilderEmissionStep {
-    description: Vec<(u8, UiLayoutNode, StyleDescription)>,
-}
-
-impl UiBuilder {
-    pub fn start_layout() -> UiBuilderLayoutStep {
-        UiBuilderLayoutStep {
-            layout: Vec::new(),
-            current_indent: 0u8,
-        }
-    }
-}
-
-impl UiBuilderLayoutStep {
-    pub fn node(self, name: &str, tags: &[&str]) -> Self {
-        let mut layout = self.layout;
-        layout.push((
-            self.current_indent,
-            UiLayoutNode {
+impl IntoLayoutNode<Gui> for Gui {
+    fn to_layout_node(self) -> LayoutNode {
+        match self {
+            Gui::Node(name, tags) => LayoutNode {
                 name: name.into(),
-                tags: tags.iter().map(|s| s.to_string()).collect(),
+                tags: tags.to_vec().iter().map(|s| s.to_string()).collect(),
+                children: Vec::new(),
             },
-        ));
-        Self {
-            current_indent: self.current_indent,
-            layout: layout,
-        }
-    }
-
-    pub fn start_children(self) -> Self {
-        if let Some((indent, _)) = self.layout.last() {
-            if indent < &self.current_indent && self.current_indent - indent > 1 {
-                panic!("Cannot indent further than once! Make sure you add at least one node between calls to `start_children`");
+            Gui::Parent(name, tags, children) => {
+                let mut parent = Gui::Node(name, tags).to_layout_node();
+                for child in children {
+                    parent.children.push(child.clone().to_layout_node());
+                }
+                parent
             }
         }
-        Self {
-            layout: self.layout,
-            current_indent: self.current_indent + 1,
-        }
     }
-    pub fn end_children(self) -> Self {
-        if self.current_indent <= 0 {
-            panic!("Cannot reduce indent past zero! There should only be one root node anyway");
-        }
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct GuiBuilder {
+    root: LayoutNode,
+    theme: StyleDescription,
+    style_named: HashMap<String, StyleDescription>,
+    style_tagged: HashMap<String, StyleDescription>,
+}
+
+impl GuiBuilder {
+    pub fn new(gui: Gui) -> Self {
         Self {
-            layout: self.layout,
-            current_indent: self.current_indent - 1,
+            root: gui.to_layout_node(),
+            ..default()
         }
     }
 
-    pub fn finish_layout(self) -> UiBuilderDescriptionStep {
-        UiBuilderDescriptionStep {
-            description: self
-                .layout
-                .into_iter()
-                .map(|v| (v.0, v.1, StyleDescription::default()))
-                .collect(),
+    pub fn style_all(mut self, style: StyleDescription) -> Self {
+        self.theme.apply(&style);
+        self
+    }
+
+    pub fn style_by_name(mut self, name: &str, style: StyleDescription) -> Self {
+        if let Some(s) = self.style_named.get_mut(name) {
+            s.apply(&style);
+        } else {
+            self.style_named.insert(name.into(), style);
+        }
+        self
+    }
+    pub fn style_by_tag(mut self, name: &str, style: StyleDescription) -> Self {
+        if let Some(s) = self.style_named.get_mut(name) {
+            s.apply(&style);
+        } else {
+            self.style_tagged.insert(name.into(), style);
+        }
+        self
+    }
+
+    pub fn emit<'a, 'b>(self, mut command: Commands<'a, 'b>) -> GuiBuilderEmission<'a, 'b>
+    where
+        'a: 'b,
+    {
+        let mut nodes = Vec::new();
+        let mut queue: VecDeque<(LayoutNode, Option<Entity>)> = VecDeque::new();
+        queue.push_back((self.root, None));
+        while !queue.is_empty() {
+            let Some((node, parent)) = queue.pop_front() else {
+                break;
+            };
+            let mut style = self.theme.clone();
+            for t in node.tags.clone() {
+                if let Some(s) = self.style_tagged.get(&t) {
+                    style.apply(s);
+                }
+            }
+            if let Some(s) = self.style_named.get(&node.name) {
+                style.apply(s);
+            }
+            let mut e = command.spawn(NodeBundle::default());
+            if let Some(p) = parent {
+                e.set_parent(p);
+            }
+            let handle = e.id();
+
+            for c in node.children {
+                queue.push_back((c, Some(handle)));
+            }
+            nodes.push(EmissionNode {
+                name: node.name,
+                tags: node.tags,
+                handle,
+                style,
+            })
+        }
+
+        GuiBuilderEmission {
+            nodes,
+            cmd: Some(command),
+        }
+    }
+}
+#[derive(Clone, Debug)]
+struct EmissionNode {
+    name: String,
+    tags: Vec<String>,
+    handle: Entity,
+    style: StyleDescription,
+}
+pub struct GuiBuilderEmission<'a, 'b> {
+    nodes: Vec<EmissionNode>,
+    cmd: Option<Commands<'a, 'b>>,
+}
+
+impl GuiBuilderEmission<'_, '_> {
+    pub fn bundle_by_name<B>(&mut self, name: &str, bundle: B) -> &mut Self
+    where
+        B: Bundle + Clone,
+    {
+        let nodes = self
+            .nodes
+            .iter()
+            .filter(|p| p.name == name)
+            .cloned()
+            .collect();
+        if let Some(cmd) = &mut self.cmd {
+            Self::bundle_targets(nodes, cmd, bundle);
+        }
+        self
+    }
+    pub fn bundle_by_tag<B>(&mut self, tag: &str, bundle: B) -> &mut Self
+    where
+        B: Bundle + Clone,
+    {
+        let nodes = self
+            .nodes
+            .iter()
+            .filter(|p| p.tags.iter().any(|p| p == tag))
+            .cloned()
+            .collect();
+        if let Some(cmd) = &mut self.cmd {
+            Self::bundle_targets(nodes, cmd, bundle);
+        }
+        self
+    }
+
+    fn bundle_targets<B>(nodes: Vec<EmissionNode>, commands: &mut Commands, bundle: B)
+    where
+        B: Bundle + Clone,
+    {
+        for n in nodes {
+            if let Some(ecmd) = &mut commands.get_entity(n.handle) {
+                ecmd.insert(bundle.clone());
+            }
+        }
+    }
+
+    pub fn finish(&mut self) {
+        if let Some(commands) = &mut self.cmd {
+            for n in self.nodes.iter() {
+                if let Some(ecmd) = &mut commands.get_entity(n.handle) {
+                    ecmd.insert(Into::<Style>::into(n.style.clone()));
+                }
+            }
         }
     }
 }
 
-impl UiBuilderDescriptionStep {
-    pub fn by_name(&mut self, name: &str, style: StyleDescription) -> &mut Self {
-        self.description = self
-            .description
-            .iter()
-            .map(|en| {
-                if en.1.name == name {
-                    (en.0, en.1.clone(), en.2.clone().apply(&style))
-                } else {
-                    (en.0, en.1.clone(), en.2.clone())
-                }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const GUI_LAYOUT: Gui = {
+        use super::Gui::*;
+
+        let parent = Parent(
+            "root",
+            &[],
+            &[Node("a", &["btn"]), Node("c", &[]), Node("c", &[])],
+        );
+        parent
+    };
+
+    fn setup_gui(commands: Commands) {
+        let layout = GUI_LAYOUT;
+        GuiBuilder::new(layout)
+            .style_all(StyleDescription {
+                width: Some(Val::Percent(50.)),
+                height: Some(Val::Percent(50.)),
+                ..default()
             })
-            .collect();
-        self
-    }
-    pub fn by_tag(&mut self, tag: &[&str], style: StyleDescription) -> &mut Self {
-        let tags: Vec<String> = tag.iter().map(|s| s.to_string()).collect();
-        self.description = self
-            .description
-            .iter()
-            .map(move |(indent, node, base_style)| {
-                for tag2 in &tags {
-                    for tag1 in node.tags.iter() {
-                        if tag2 == tag1 {
-                            return (*indent, node.clone(), base_style.clone().apply(&style));
-                        }
-                    }
-                }
-                (*indent, node.clone(), base_style.clone())
-            })
-            .collect();
-        self
+            .emit(commands)
+            .bundle_by_tag("btn", ButtonBundle::default())
+            .finish();
     }
 
-    pub fn finish_design(self) -> UiBuilderEmissionStep {
-        UiBuilderEmissionStep {
-            description: self.description,
-        }
+    fn prep_test() -> App {
+        let mut app = App::new();
+        app.add_systems(Startup, setup_gui);
+        app.update();
+        app
+    }
+
+    #[test]
+    fn test_display_structure() {
+        println!("{:#?}", GUI_LAYOUT);
+    }
+
+    #[test]
+    fn test_nodes_present() {
+        let mut app = prep_test();
+        assert_eq!(app.world.query::<&Node>().iter(&app.world).count(), 4);
+    }
+    #[test]
+    fn test_button_present() {
+        let mut app = prep_test();
+        assert_eq!(app.world.query::<&Button>().iter(&app.world).count(), 1);
     }
 }
