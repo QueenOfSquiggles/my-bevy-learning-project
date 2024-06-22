@@ -4,6 +4,7 @@ const RADIANS_PER_SECOND: f32 = 0.1;
 
 mod game_plugin;
 mod hud;
+mod ui_builder;
 
 fn main() {
     App::new()

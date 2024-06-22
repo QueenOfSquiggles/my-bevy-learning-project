@@ -23,5 +23,27 @@
 			},
 			"label": "rust: cargo run (w DLL)"
 		},
+		{
+			"type": "cargo",
+			"command": "cargo",
+			"args": [
+				"mommy",
+				"build",
+				"-F",
+				"bevy/dynamic_linking"
+			],
+			"env": {
+				"CARGO_MANIFEST_DIR": "${workspaceFolder}",
+				"LD_LIBRARY_PATH": "${workspaceFolder}/target/debug/deps:${env:HOME}/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib"
+			},
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"label": "rust: cargo build (w DLL)"
+		},
 	]
 }

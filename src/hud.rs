@@ -1,4 +1,7 @@
 use bevy::prelude::*;
+use style_description::StyleDescription;
+
+use crate::ui_builder::*;
 
 // This plugin is being tested with isolation by only including itself and `DefaultPlugins`
 // eg:
@@ -46,7 +49,7 @@ struct ButtonIdentity {
 }
 
 fn create_hud(mut commands: Commands, assets: ResMut<AssetServer>) {
-    let button_image = assets.load("textures/button_square_depth_gloss.png");
+    // let button_image = assets.load("textures/button_square_depth_gloss.png");
 
     let slicer = TextureSlicer {
         border: // BorderRect::square(4.),
@@ -62,60 +65,95 @@ fn create_hud(mut commands: Commands, assets: ResMut<AssetServer>) {
     };
 
     commands.spawn(Camera2dBundle::default());
-    commands
-        .spawn(NodeBundle {
-            style: Style {
-                // display: Display::Flex,
-                width: Val::Percent(45.),
-                height: Val::Percent(100.),
-                align_self: AlignSelf::FlexEnd,
-                margin: UiRect::left(Val::Percent(15.)),
-                padding: UiRect::all(Val::Percent(3.)),
-                flex_direction: FlexDirection::Column,
-                justify_content: JustifyContent::FlexEnd,
-                align_items: AlignItems::Center,
+    let layout = UiBuilder::start_layout()
+        .node("root", &[])
+        .start_children()
+        .node("menu", &["column"])
+        .start_children()
+        .node("btn_group", &["column"])
+        .start_children()
+        .node("btn_play", &["btn"])
+        .node("btn_options", &["btn"])
+        .node("btn_credits", &["btn"])
+        .node("btn_quit", &["btn"]);
+    info!("GUI Layout  {:?}", layout);
+
+    let mut style_builder = layout.finish_layout();
+    let style = style_builder
+        .by_name(
+            "root",
+            StyleDescription {
+                width: Some(Val::Percent(100.)),
+                height: Some(Val::Percent(100.)),
                 ..default()
             },
-            background_color: Color::WHITE.into(),
-            ..default()
-        })
-        .with_children(|parent| {
-            for (width, height, id) in [
-                (320., 64., ButtonID::Play),
-                (320., 64., ButtonID::Options),
-                (320., 64., ButtonID::Credits),
-                (320., 64., ButtonID::Quit),
-            ] {
-                parent
-                    .spawn((
-                        ButtonBundle {
-                            style: Style {
-                                width: Val::Px(width),
-                                height: Val::Px(height),
-                                justify_content: JustifyContent::Center,
-                                align_items: AlignItems::Center,
-                                margin: UiRect::all(Val::Px(3.)),
-                                ..default()
-                            },
+        )
+        .by_tag(
+            &["column"],
+            StyleDescription {
+                flex_direction: Some(FlexDirection::Column),
+                align_items: Some(AlignItems::Center),
+                justify_content: Some(JustifyContent::Center),
+                ..default()
+            },
+        )
+        .by_tag(&["btn"], StyleDescription { ..default() });
+    // info!("GUI Styled  {:?}", style);
 
-                            image: UiImage::new(button_image.clone()),
-                            ..default()
-                        },
-                        ImageScaleMode::Sliced(slicer.clone()),
-                        ButtonIdentity { id },
-                    ))
-                    .with_children(|build| {
-                        build.spawn(TextBundle::from_section(
-                            id.get_name(),
-                            TextStyle {
-                                font_size: 16.0,
-                                color: Color::BLACK,
-                                ..default()
-                            },
-                        ));
-                    });
-            }
-        });
+    // commands
+    //     .spawn(NodeBundle {
+    //         style: Style {
+    //             // display: Display::Flex,
+    //             width: Val::Percent(45.),
+    //             height: Val::Percent(100.),
+    //             align_self: AlignSelf::FlexEnd,
+    //             margin: UiRect::left(Val::Percent(15.)),
+    //             padding: UiRect::all(Val::Percent(3.)),
+    //             flex_direction: FlexDirection::Column,
+    //             justify_content: JustifyContent::FlexEnd,
+    //             align_items: AlignItems::Center,
+    //             ..default()
+    //         },
+    //         background_color: Color::WHITE.into(),
+    //         ..default()
+    //     })
+    //     .with_children(|parent| {
+    //         for (width, height, id) in [
+    //             (320., 64., ButtonID::Play),
+    //             (320., 64., ButtonID::Options),
+    //             (320., 64., ButtonID::Credits),
+    //             (320., 64., ButtonID::Quit),
+    //         ] {
+    //             parent
+    //                 .spawn((
+    //                     ButtonBundle {
+    //                         style: Style {
+    //                             width: Val::Px(width),
+    //                             height: Val::Px(height),
+    //                             justify_content: JustifyContent::Center,
+    //                             align_items: AlignItems::Center,
+    //                             margin: UiRect::all(Val::Px(3.)),
+    //                             ..default()
+    //                         },
+
+    //                         image: UiImage::new(button_image.clone()),
+    //                         ..default()
+    //                     },
+    //                     ImageScaleMode::Sliced(slicer.clone()),
+    //                     ButtonIdentity { id },
+    //                 ))
+    //                 .with_children(|build| {
+    //                     build.spawn(TextBundle::from_section(
+    //                         id.get_name(),
+    //                         TextStyle {
+    //                             font_size: 16.0,
+    //                             color: Color::BLACK,
+    //                             ..default()
+    //                         },
+    //                     ));
+    //                 });
+    //         }
+    //     });
 }
 
 #[allow(clippy::type_complexity)]
