@@ -175,11 +175,11 @@ jobs:
       - name: Optimize Wasm
         uses: NiklasEi/wasm-opt-action@v2
         with:
-          file: release/*.wasm
+          file: dist/*.wasm
       - name: Zip release
         uses: vimtor/action-zip@v1.1
         with:
-          files: release/
+          files: dist/
           dest: ${{ env.GAME_EXECUTABLE_NAME }}_web.zip
       - name: Upload release
         uses: svenstaro/upload-release-action@v2
