@@ -1,8 +1,9 @@
 name: CI
 
 on:
-  pull_request:
-  push:
+  # pull_request:
+  # push:
+  workflow_dispatch: # allow running at user request. For this project, no actual need for CI
 
 jobs:
   test:
